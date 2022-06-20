@@ -1,0 +1,5 @@
+[ci]
+fuzz-runs = 10_000
+
+[default]
+remappings = ["forge-std/=lib/forge-std/src/", "@openzeppelin/=lib/openzeppelin-contracts/"]
