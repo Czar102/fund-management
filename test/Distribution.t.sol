@@ -9,12 +9,12 @@ contract DistributionTest is Test {
 	Distribution public distr;
 	ERC20 public erc20;
 
-    function setUp() public {
+	function setUp() public {
 		distr = new Distribution();
 		erc20 = new MockERC20();
 	}
 
-    function testSkimDistribute(uint value) public {
+	function testSkimDistribute(uint value) public {
 		vm.assume(value != 0);
 		vm.assume(value < erc20.balanceOf(address(this)));
 		uint pid = distr.getCurrentSnapshotId();
@@ -25,5 +25,5 @@ contract DistributionTest is Test {
 		(address token, uint val) = distr.pools(pid);
 		assertEq(val, value, "Skim distribute brought wrong pool value");
 		assertEq(uint(uint160(token)), uint(uint160(address(erc20))), "Distribute took wrong token");
-    }
+	}
 }
