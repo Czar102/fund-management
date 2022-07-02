@@ -34,7 +34,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	}
 
 	function toClaim(address who, uint pid) public view returns (uint) {
-		uint amount = pools[pid].total *
+		return pools[pid].total *
 			balanceOfAt(who, pid) /
 			totalSupplyAt(pid);
 	}
