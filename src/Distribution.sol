@@ -8,7 +8,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 struct Pool {
 	address token;
-	uint value;
+	uint96 timestamp;
+	uint total;
+	uint left;
 }
 
 contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
@@ -18,7 +20,10 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	mapping(address => mapping(uint => bool)) withdrawn; // user => pid => withdrawn
 	mapping(address => uint) public acknowledgedBalanceOfToken; // token => balance
 
-	constructor() ERC20("Vault Percentage", "%") {
+	uint immutable adminRecoverTime;
+
+	constructor(string memory vaultName, uint _adminRecoverTime) ERC20(string(abi.encodePacked(vaultName, " Vault Equity")), "%") {
+		adminRecoverTime = _adminRecoverTime;
 		_mint(msg.sender, 100e18);
 	}
 
@@ -63,49 +68,74 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	function _skimDistribute(address token) internal {
 		uint balance = IERC20(token).balanceOf(address(this));
-		uint newBalance = balance - acknowledgedBalanceOfToken[token];
-		require(newBalance != 0, "No new balance");
-		acknowledgedBalanceOfToken[token] = balance;
+		uint poolBalance = balance - acknowledgedBalanceOfToken[token];
 
-		_createPool(token, newBalance);
+		require(poolBalance != 0, "No new balance");
+
+		acknowledgedBalanceOfToken[token] = balance;
+		_createPool(token, poolBalance);
 	}
 
 	function _createPool(address token, uint value) internal {
-		pools.push(Pool(token, value));
+		pools.push(
+			Pool({
+				token: token,
+				timestamp: uint96(block.timestamp),
+				total: value,
+				left: value
+			})
+		);
 		_snapshot();
 	}
 
 	function _withdrawTo(address to, uint pid) internal {
-		require(!withdrawn[msg.sender][pid], "User already withdrew");
-		Pool memory pool = pools[pid];
-
+		require(!withdrawn[msg.sender][pid], "Already withdrew");
 		withdrawn[msg.sender][pid] = true;
-		uint _allowance = pool.value *
+
+		Pool storage pool = pools[pid];
+		uint amount = pool.total *
 			balanceOfAt(msg.sender, pid) /
 			totalSupplyAt(pid);
 
-		if (_allowance > 0) {
-			acknowledgedBalanceOfToken[pool.token] -= _allowance;
-			IERC20(pool.token).safeTransfer(to, _allowance);
-		}
+		uint left = pool.left;
+		amount = amount < left ? amount : left;
+		require(amount > 0, "Nothing to withdraw");
+
+		address token = pool.token;
+		acknowledgedBalanceOfToken[token] -= amount;
+		pool.left = left - amount;
+		IERC20(token).safeTransfer(to, amount);
 	}
 
 	// MANAGEMENT FUNCTIONS
 
+	function adminRecover(uint lowPid, uint highPid) onlyOwner external {		
+		// Only needs to check the last because a pool
+		// with a larger pid can't have a lower timestamp
+		// and timestamps are monotinocally increasing
+		uint timestamp = uint(pools[highPid - 1].timestamp);
+		require(
+			timestamp + adminRecoverTime < block.timestamp &&
+				timestamp != 0,
+			"Not ready"
+		);
+
+		for (; lowPid < highPid;) {
+			Pool storage pool = pools[lowPid];
+			uint amount = pool.left;
+			
+			if (amount > 0) {
+				address token = pool.token;
+				pool.left = 0;
+				acknowledgedBalanceOfToken[token] -= amount;
+				IERC20(token).safeTransfer(msg.sender, amount);
+			}
+			unchecked {++lowPid;}
+		}
+	}
+
 	function withdrawEth() onlyOwner external {
 		(bool success, bytes memory reason) = msg.sender.call{value: address(this).balance}("");
 		require(success, string(abi.encodePacked("Transfer failed: ", reason)));
-	}
-
-	function call(address to, uint value, uint gas, bytes calldata data) onlyOwner external returns (bytes memory) {
-		(bool success, bytes memory reason) = to.call{value: value, gas: gas}(data);
-		require(success, string(abi.encodePacked("Call failed: ", reason)));
-		return reason;
-	}
-
-	function delegatecall(address to, uint gas, bytes calldata data) onlyOwner external returns (bytes memory) {
-		(bool success, bytes memory reason) = to.delegatecall{gas: gas}(data);
-		require(success, string(abi.encodePacked("Delegatecall failed: ", reason)));
-		return reason;
 	}
 }

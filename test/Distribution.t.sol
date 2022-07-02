@@ -10,20 +10,26 @@ contract DistributionTest is Test {
 	ERC20 public erc20;
 
 	function setUp() public {
-		distr = new Distribution();
+		distr = new Distribution("tx1", 604800);
 		erc20 = new MockERC20();
 	}
 
-	function testSkimDistribute(uint value) public {
+	function testSkimDistribute(uint value, uint firstTransfer, uint secondTransfer) public {
 		vm.assume(value != 0);
 		vm.assume(value < erc20.balanceOf(address(this)));
+		unchecked { // no overflow
+			vm.assume(firstTransfer + secondTransfer > secondTransfer);
+		}
+		vm.assume(firstTransfer + secondTransfer <= erc20.balanceOf(address(this)));
 		uint pid = distr.getCurrentSnapshotId();
 
 		erc20.transfer(address(distr), value);
 		distr.skimDistribute(address(erc20));		
 
-		(address token, uint val) = distr.pools(pid);
+		(address token, uint96 timestamp, uint val, uint left) = distr.pools(pid);
 		assertEq(val, value, "Skim distribute brought wrong pool value");
-		assertEq(uint(uint160(token)), uint(uint160(address(erc20))), "Distribute took wrong token");
+		assertTrue(token == address(erc20), "Distribute took wrong token");
+
+
 	}
 }
