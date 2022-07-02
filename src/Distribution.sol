@@ -29,7 +29,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// VIEW FUNCTIONS
 
-	function getCurrentSnapshotId() public view returns (uint) {
+	function getPoolCount() public view returns (uint) {
 		return _getCurrentSnapshotId();
 	}
 
