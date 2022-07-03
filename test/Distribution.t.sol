@@ -22,8 +22,20 @@ contract DistributionTest is Test {
 		erc20.approve(address(distr), 1000e18);
 		distr.pullDistribute(address(erc20), 500e18);
 
+		(address token, uint96 timestamp, uint val, uint left) = distr.pools(1);
+		assertEq(token, address(erc20), "wrong token");
+		assertEq(uint(timestamp), block.timestamp, "wrong timestamp");
+		assertEq(val, 1000e18, "wrong value");
+		assertEq(left, val, "value leak");
+		assertEq(distr.toClaim(address(this), 1), val, "wrong toClaim value");
 
-		// assertEq();
+		(token, timestamp, val, left) = distr.pools(2);
+		assertEq(token, address(erc20), "wrong token");
+		assertEq(uint(timestamp), block.timestamp, "wrong timestamp");
+		assertEq(val, 500e18, "wrong value");
+		assertEq(left, val, "value leak");
+		assertEq(distr.toClaim(address(this), 2), val * 9 / 10, "wrong toClaim value");
+
 	}
 
 	function testSkimDistribute(uint value, uint firstTransfer, uint secondTransfer) public {
@@ -33,13 +45,13 @@ contract DistributionTest is Test {
 			vm.assume(firstTransfer + secondTransfer > secondTransfer);
 		}
 		vm.assume(firstTransfer + secondTransfer <= erc20.balanceOf(address(this)));
-		uint pid = distr.getPoolCount();
 
 		erc20.transfer(address(distr), value);
 		distr.skimDistribute(address(erc20));		
 
+		uint pid = distr.getPoolCount();
 		(address token, uint96 timestamp, uint val, uint left) = distr.pools(pid);
 		assertEq(val, value, "Skim distribute brought wrong pool value");
-		assertTrue(token == address(erc20), "Distribute took wrong token");
+		assertEq(token, address(erc20), "Distribute took wrong token");
 	}
 }

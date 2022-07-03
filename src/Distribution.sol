@@ -23,6 +23,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	uint immutable adminRecoverTime;
 
 	constructor(string memory vaultName, uint _adminRecoverTime) ERC20(string(abi.encodePacked(vaultName, " Vault Equity")), "%") {
+		pools.push(Pool(address(0), uint96(0), 0, 0));
 		adminRecoverTime = _adminRecoverTime;
 		_mint(msg.sender, 100e18);
 	}
