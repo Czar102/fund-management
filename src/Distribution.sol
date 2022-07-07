@@ -34,10 +34,14 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		return _getCurrentSnapshotId();
 	}
 
-	function toClaim(address who, uint pid) public view returns (uint) {
-		return pools[pid].total *
+	function toClaim(address who, uint pid) public view returns (uint max) {
+		Pool storage pool = pools[pid];
+		max = pool.total *
 			balanceOfAt(who, pid) /
 			totalSupplyAt(pid);
+		uint left = pool.left;
+		return left < max ? left : max;
+
 	}
 
 	// EXTERNAL FUNCTIONS
@@ -100,10 +104,12 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		withdrawn[msg.sender][pid] = true;
 
 		Pool storage pool = pools[pid];
-		uint amount = toClaim(msg.sender, pid);
 
+		uint amount = pool.total *
+			balanceOfAt(msg.sender, pid) /
+			totalSupplyAt(pid);
 		uint left = pool.left;
-		amount = amount < left ? amount : left;
+		amount = left < amount ? left : amount;
 		require(amount > 0, "Nothing to withdraw");
 
 		address token = pool.token;
