@@ -31,7 +31,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	// VIEW FUNCTIONS
 
 	function getPoolCount() public view returns (uint) {
-		return _getCurrentSnapshotId();
+		return pools.length;
 	}
 
 	function toClaim(address who, uint pid) public view returns (uint max) {
@@ -41,7 +41,6 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 			totalSupplyAt(pid);
 		uint left = pool.left;
 		return left < max ? left : max;
-
 	}
 
 	// EXTERNAL FUNCTIONS
@@ -131,7 +130,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 			"Not ready"
 		);
 
-		for (; lowPid < highPid;) {
+		while (lowPid < highPid) {
 			Pool storage pool = pools[lowPid];
 			uint amount = pool.left;
 			
