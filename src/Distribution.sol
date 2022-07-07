@@ -114,7 +114,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// MANAGEMENT FUNCTIONS
 
-	function adminRecover(uint lowPid, uint highPid) onlyOwner external {		
+	function adminRecover(uint lowPid, uint highPid) onlyOwner nonReentrant external {		
 		// Only needs to check the last because a pool
 		// with a larger pid can't have a lower timestamp
 		// and timestamps are monotinocally increasing
