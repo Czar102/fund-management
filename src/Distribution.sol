@@ -143,4 +143,10 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		(bool success, bytes memory reason) = msg.sender.call{value: address(this).balance}("");
 		require(success, string(abi.encodePacked("Transfer failed: ", reason)));
 	}
+
+	// OVERRDES
+
+	function _transfer(address from, address to, uint256 amount) internal nonReentrant {
+		super._transfer(from, to, amount);
+	}
 }
