@@ -146,7 +146,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// OVERRDES
 
-	function _transfer(address from, address to, uint256 amount) internal nonReentrant {
+	function _transfer(address from, address to, uint256 amount) internal override nonReentrant {
 		super._transfer(from, to, amount);
 	}
 }
