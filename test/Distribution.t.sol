@@ -100,23 +100,6 @@ contract DistributionTest is Test {
 		}
 	}
 
-	function testSkimDistribute(uint value, uint firstTransfer, uint secondTransfer) public {
-		vm.assume(value != 0);
-		vm.assume(value <= erc20.balanceOf(address(this)));
-		unchecked { // no overflow
-			vm.assume(firstTransfer + secondTransfer > secondTransfer);
-		}
-		vm.assume(firstTransfer + secondTransfer <= erc20.balanceOf(address(this)));
-
-		erc20.transfer(address(distr), value);
-		distr.skimDistribute(address(erc20));		
-
-		uint pid = distr.getPoolCount() - 1;
-		(address token,, uint val,) = distr.pools(pid);
-		assertEq(val, value, "Skim distribute brought wrong pool value");
-		assertEq(token, address(erc20), "Distribute took wrong token");
-	}
-
 	function testBatchWithdraw() public {
 		address a1 = address(0x01);
 		address a2 = address(0x02);
@@ -158,6 +141,31 @@ contract DistributionTest is Test {
 		distr.withdrawEth();
 
 		assertEq(address(this).balance, 1e18, "Wring Ether value");
+	}
+
+	function testAdminRecover() public {
+		address a1 = address(0x01);
+		address a2 = address(0x02);
+
+		distr.transfer(a1, 25e18);
+		distr.transfer(a2, 75e18);
+
+		erc20.transfer(address(distr), 1000);
+		distr.skimDistribute(address(erc20));
+
+		vm.prank(a1);
+		distr.withdraw(1);
+
+		skip(RECOVER_TIME - 1);
+		vm.expectRevert("Not ready");
+		distr.adminRecover(1, 2);
+
+		uint balanceBefore = erc20.balanceOf(address(this));
+
+		skip(1);
+		distr.adminRecover(1, 2);
+
+		assertEq(erc20.balanceOf(address(this)), balanceBefore + 750, "Incorrect balance");
 	}
 
 	receive() external payable {}
