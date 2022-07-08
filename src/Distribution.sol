@@ -46,7 +46,10 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// VIEW FUNCTIONS
 
-	/// @notice a getter for the number of created pools, including an empty one
+	/**
+	 * @notice a getter for the number of created pools, including an empty one
+	 * @return the number of existing pools
+	 */
 	function getPoolCount() public view returns (uint) {
 		return pools.length;
 	}
@@ -54,8 +57,11 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	/**
 	 * @notice calculates how much can a user withdraw from a pool
 	 * @dev note that the withdrawal call may still revert since an admin may withdraw
+	 * @param who the address withdrawing tokens
+	 * @param pid the pool id to withdraw from
+	 * @return the amount the user can claim
 	 */
-	function toClaim(address who, uint pid) external view returns (uint max) {
+	function toClaim(address who, uint pid) external view returns (uint) {
 		if (withdrawn[who][pid]) return 0;
 
 		Pool storage pool = pools[pid];
