@@ -126,7 +126,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		// and timestamps are monotinocally increasing
 		uint timestamp = uint(pools[highPid - 1].timestamp);
 		require(
-			timestamp + adminRecoverTime < block.timestamp &&
+			timestamp + adminRecoverTime <= block.timestamp &&
 				timestamp != 0,
 			"Not ready"
 		);
