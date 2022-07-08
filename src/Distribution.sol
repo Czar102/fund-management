@@ -13,27 +13,48 @@ struct Pool {
 	uint left;
 }
 
+/**
+ * @title Distribution
+ * @author Czar102
+ * @notice this contract is used to divide funds equallt to all token holders proportionally to their equity
+ * @dev Only ERC20 tokens can be distributed
+ */
 contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	using SafeERC20 for IERC20;
 
+	/// @notice pools created, starting from index 1
 	Pool[] public pools;
-	mapping(address => mapping(uint => bool)) withdrawn; // user => pid => withdrawn
-	mapping(address => uint) public acknowledgedBalanceOfToken; // token => balance
+	/// @notice indicates if a user withdraw from a pool
+	/// @dev maps user => pid => withdrawn
+	mapping(address => mapping(uint => bool)) withdrawn;
 
-	uint immutable adminRecoverTime;
+	/// @notice the time after which an admin can withdraw any left tokens from any pool after its creation
+	uint public immutable adminRecoveryTime;
 
-	constructor(string memory vaultName, uint _adminRecoverTime) ERC20(string(abi.encodePacked(vaultName, " Vault Equity")), "%") {
+	mapping(address => uint) private acknowledgedBalanceOfToken;
+
+	/**
+	 * @notice the constructor of the contract
+	 * @param vaultName the name of the vault
+	 * @param _adminRecoveryTime the time after which an admin can withdraw any left tokens from any pool after its creation
+	 */
+	constructor(string memory vaultName, uint _adminRecoveryTime) ERC20(string(abi.encodePacked(vaultName, " Vault Equity")), "%") {
 		pools.push(Pool(address(0), uint96(0), 0, 0));
-		adminRecoverTime = _adminRecoverTime;
+		adminRecoveryTime = _adminRecoveryTime;
 		_mint(msg.sender, 100e18);
 	}
 
 	// VIEW FUNCTIONS
 
+	/// @notice a getter for the number of created pools, including an empty one
 	function getPoolCount() public view returns (uint) {
 		return pools.length;
 	}
 
+	/**
+	 * @notice calculates how much can a user withdraw from a pool
+	 * @dev note that the withdrawal call may still revert since an admin may withdraw
+	 */
 	function toClaim(address who, uint pid) external view returns (uint max) {
 		if (withdrawn[who][pid]) return 0;
 
@@ -46,27 +67,57 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// EXTERNAL FUNCTIONS
 
+	/**
+	 * @notice creates a pool made of tokens pulled from the caller
+	 * @notice the caller must approve the token prior to calling this function
+	 * @dev it may happen that this function will create a larger pool than anticipated
+	 *      because the contract may have a token inflow that hasn't been realized before
+	 * @param token the token for which the pool is created
+	 * @param value the value of the token to pull to create a pool
+	 */
 	function pullDistribute(address token, uint value) external nonReentrant {
 		IERC20(token).safeTransferFrom(msg.sender, address(this), value);
 		_skimDistribute(token);
 	}
 
+	/**
+	 * @notice creates a pool made of the new balance of the token
+	 * @param token the otken for which the pool is created
+	 */
 	function skimDistribute(address token) external nonReentrant {
 		_skimDistribute(token);
 	}
 
+	/**
+	 * @notice withdraws funds of the caller from pool pid and sends them to the caller
+	 * @param pid the pool id to withdraw from
+	 */
 	function withdraw(uint pid) external {
 		withdrawTo(msg.sender, pid);
 	}
 
+	/**
+	 * @notice withdraws funds of the caller from pool pid to the specified recipient
+	 * @param to the recipient of the tokens
+	 * @param pid the pool id to withdraw from
+	 */
 	function withdrawTo(address to, uint pid) public nonReentrant {
 		_withdrawTo(to, pid);
 	}
 
+	/**
+	 * @notice withdraws funds of the caller from multiple pools
+	 * @param pids an array of pool ids to withdraw from
+	 */
 	function withdrawBatch(uint[] calldata pids) external {
 		withdrawBatchTo(msg.sender, pids);
 	}
 
+	/**
+	 * @notice withdraws funds of the caller to a specified recipient from multiple pools
+	 * @param to the recipient of the tokens
+	 * @param pids an array of pool ids to withdraw from
+	 */
 	function withdrawBatchTo(address to, uint[] calldata pids) public nonReentrant {
 		uint length = pids.length;
 		for (uint i; i < length;) {
@@ -120,13 +171,18 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	// MANAGEMENT FUNCTIONS
 
+	/**
+	 * @notice used to recover any funds that are in a pool for longer than adminRecoveryTime
+	 * @param lowPid the lower boundary of pids to recover, inclusive
+	 * @param highPid the upper boundary of pids to recover, exclusive
+	 */
 	function adminRecover(uint lowPid, uint highPid) onlyOwner nonReentrant external {		
 		// Only needs to check the last because a pool
 		// with a larger pid can't have a lower timestamp
 		// and timestamps are monotinocally increasing
 		uint timestamp = uint(pools[highPid - 1].timestamp);
 		require(
-			timestamp + adminRecoverTime <= block.timestamp &&
+			timestamp + adminRecoveryTime <= block.timestamp &&
 				timestamp != 0,
 			"Not ready"
 		);
@@ -145,6 +201,9 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		}
 	}
 
+	/**
+	 * @notice an admin function to remove any ether that was sent accidentally (through selfdestruct)
+	 */
 	function withdrawEth() onlyOwner external {
 		(bool success, bytes memory reason) = msg.sender.call{value: address(this).balance}("");
 		require(success, string(abi.encodePacked("Transfer failed: ", reason)));
