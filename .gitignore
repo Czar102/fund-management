@@ -1,3 +1,6 @@
 cache/
 out/
 lib/
+.gas-snapshot
+remappings.txt
+.vscode/
