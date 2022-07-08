@@ -166,7 +166,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		uint amount = pool.total *
 			balanceOfAt(msg.sender, pid) /
 			totalSupplyAt(pid);
-		require(amount > 0, "Nothing to withdraw");
+		require(amount != 0, "Nothing to withdraw");
 
 		address token = pool.token;
 		acknowledgedBalanceOfToken[token] -= amount;
@@ -196,7 +196,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 			Pool storage pool = pools[lowPid];
 			uint amount = pool.left;
 			
-			if (amount > 0) {
+			if (amount != 0) {
 				address token = pool.token;
 				pool.left = 0;
 				acknowledgedBalanceOfToken[token] -= amount;
