@@ -34,7 +34,8 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		return pools.length;
 	}
 
-	function toClaim(address who, uint pid) public view returns (uint max) {
+	function toClaim(address who, uint pid) external view returns (uint max) {
+		if (withdrawn[who][pid]) return 0;
 		Pool storage pool = pools[pid];
 		max = pool.total *
 			balanceOfAt(who, pid) /
