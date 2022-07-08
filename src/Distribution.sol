@@ -160,11 +160,12 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 		Pool storage pool = pools[pid];
 
+		uint left = pool.left;
+		require(left != 0, "Admin withdrew");
+
 		uint amount = pool.total *
 			balanceOfAt(msg.sender, pid) /
 			totalSupplyAt(pid);
-		uint left = pool.left;
-		amount = left < amount ? left : amount;
 		require(amount > 0, "Nothing to withdraw");
 
 		address token = pool.token;
