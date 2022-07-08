@@ -135,18 +135,16 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		require(poolBalance != 0, "No new balance");
 
 		acknowledgedBalanceOfToken[token] = balance;
-		_createPool(token, poolBalance);
-	}
 
-	function _createPool(address token, uint value) internal {
 		pools.push(
 			Pool({
 				token: token,
 				timestamp: uint96(block.timestamp),
-				total: value,
-				left: value
+				total: poolBalance,
+				left: poolBalance
 			})
 		);
+
 		_snapshot();
 	}
 
