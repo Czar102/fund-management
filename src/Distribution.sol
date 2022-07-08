@@ -212,7 +212,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		require(success, string(abi.encodePacked("Transfer failed: ", reason)));
 	}
 
-	// OVERRDES
+	// OVERRIDES
 
 	function _transfer(address from, address to, uint256 amount) internal override nonReentrant {
 		super._transfer(from, to, amount);
