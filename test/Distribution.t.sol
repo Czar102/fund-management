@@ -11,6 +11,10 @@ contract DistributionTest is Test {
 	Distribution public distr;
 	ERC20 public erc20;
 
+	event PoolCreated(uint indexed pid, address indexed token, uint amount);
+	event Withdrawal(uint indexed pid, address indexed from, address indexed to);
+	event AdminRecover(uint indexed pid);
+
 	function setUp() public {
 		distr = new Distribution("tx1", RECOVER_TIME);
 		erc20 = new MockERC20();
@@ -26,10 +30,14 @@ contract DistributionTest is Test {
 
 	function testDistribute() public {
 		erc20.transfer(address(distr), 1000e18);
+		vm.expectEmit(true, true, true, true);
+		emit PoolCreated(distr.getPoolCount(), address(erc20), 1000e18);
 		distr.skimDistribute(address(erc20));
 
 		distr.transfer(address(0xdead), 10e18);
 		erc20.approve(address(distr), 1000e18);
+		vm.expectEmit(true, true, true, true);
+		emit PoolCreated(distr.getPoolCount(), address(erc20), 500e18);
 		distr.pullDistribute(address(erc20), 500e18);
 
 		// skimDistribute parameters
@@ -50,6 +58,8 @@ contract DistributionTest is Test {
 
 		{
 			uint valueBefore = erc20.balanceOf(address(this));
+			vm.expectEmit(true, true, true, true);
+			emit Withdrawal(1, address(this), address(this));
 			distr.withdraw(1);
 
 			vm.expectRevert("Already withdrew");
@@ -66,6 +76,8 @@ contract DistributionTest is Test {
 
 		{
 			uint valueBefore = erc20.balanceOf(address(this));
+			vm.expectEmit(true, true, true, true);
+			emit Withdrawal(2, address(this), address(this));
 			distr.withdraw(2);
 
 			vm.expectRevert("Already withdrew");
@@ -85,6 +97,8 @@ contract DistributionTest is Test {
 			uint valueBefore = erc20.balanceOf(address(0xdead));
 
 			vm.startPrank(address(0xdead));
+			vm.expectEmit(true, true, true, true);
+			emit Withdrawal(2, address(0xdead), address(0xdead));
 			distr.withdraw(2);
 			vm.expectRevert("Already withdrew");
 			distr.withdraw(2);
@@ -120,10 +134,18 @@ contract DistributionTest is Test {
 		pids[1] = 2;
 
 		vm.prank(a1);
+		vm.expectEmit(true, true, true, true);
+		emit Withdrawal(1, a1, a2);
+		vm.expectEmit(true, true, true, true);
+		emit Withdrawal(2, a1, a2);
 		distr.withdrawBatchTo(a2, pids);
 		assertEq(erc20.balanceOf(a2), 250 + 25);
 
 		vm.prank(a2);
+		vm.expectEmit(true, true, true, true);
+		emit Withdrawal(1, a2, a2);
+		vm.expectEmit(true, true, true, true);
+		emit Withdrawal(2, a2, a2);
 		distr.withdrawBatch(pids);
 		assertEq(erc20.balanceOf(a2), 250 + 25 + 40 + 400);
 	}
@@ -163,6 +185,8 @@ contract DistributionTest is Test {
 		uint balanceBefore = erc20.balanceOf(address(this));
 
 		skip(1);
+		vm.expectEmit(true, true, true, true);
+		emit AdminRecover(1);
 		distr.adminRecover(1, 2);
 
 		assertEq(erc20.balanceOf(address(this)), balanceBefore + 750, "Incorrect balance");
