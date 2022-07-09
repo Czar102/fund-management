@@ -24,14 +24,39 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 	/// @notice pools created, starting from index 1
 	Pool[] public pools;
-	/// @notice indicates if a user withdraw from a pool
-	/// @dev maps user => pid => withdrawn
+
+	/**
+	 * @notice indicates if a user withdraw from a pool
+	 * @dev maps user => pid => withdrawn
+	 */
 	mapping(address => mapping(uint => bool)) withdrawn;
 
 	/// @notice the time after which an admin can withdraw any left tokens from any pool after its creation
 	uint public immutable adminRecoveryTime;
 
 	mapping(address => uint) private acknowledgedBalanceOfToken;
+
+	/**
+	 * @notice emitted when pool pid is created
+	 * @param pid the pid of the created pool
+	 * @param token the token teh pool consists of
+	 * @param amount the amount of token locked
+	 */
+	event PoolCreated(uint indexed pid, address indexed token, uint amount);
+
+	/**
+	 * @notice emitted upon a withdrawal from pool
+	 * @param pid the pool id of the pool
+	 * @param from an address whose withdrawal was executed
+	 * @param to an address which received withdrawn tokens
+	 */
+	event Withdrawal(uint indexed pid, address indexed from, address indexed to);
+
+	/**
+	 * @notice emitted when admin recovers the rest of funds from the pool
+	 * @param pid the pool id from which the tokens were withdrawn
+	 */
+	event AdminRecover(uint indexed pid);
 
 	/**
 	 * @notice the constructor of the contract
@@ -151,7 +176,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 			})
 		);
 
-		_snapshot();
+		emit PoolCreated(_snapshot(), token, poolBalance);
 	}
 
 	function _withdrawTo(address to, uint pid) internal {
@@ -172,6 +197,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		acknowledgedBalanceOfToken[token] -= amount;
 		pool.left = left - amount;
 		IERC20(token).safeTransfer(to, amount);
+		emit Withdrawal(pid, msg.sender, to);
 	}
 
 	// MANAGEMENT FUNCTIONS
@@ -201,6 +227,7 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 				pool.left = 0;
 				acknowledgedBalanceOfToken[token] -= amount;
 				IERC20(token).safeTransfer(msg.sender, amount);
+				emit AdminRecover(lowPid);
 			}
 			unchecked {++lowPid;}
 		}
