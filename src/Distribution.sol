@@ -233,12 +233,6 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		}
 	}
 
-	/// @notice an admin function to remove any ether that was sent accidentally (through selfdestruct)
-	function withdrawEth() onlyOwner external {
-		(bool success, bytes memory reason) = msg.sender.call{value: address(this).balance}("");
-		require(success, string(abi.encodePacked("Transfer failed: ", reason)));
-	}
-
 	// OVERRIDES
 
 	function _transfer(address from, address to, uint256 amount) internal override nonReentrant {

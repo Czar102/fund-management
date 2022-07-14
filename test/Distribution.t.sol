@@ -20,14 +20,6 @@ contract DistributionTest is Test {
 		erc20 = new MockERC20();
 	}
 
-	/// could have used `deal`, but that wouldn't be fun
-	function forceEtherTransfer(address to, uint amount) internal {
-		assembly {
-			mstore(0, or(0x730000000000000000000000000000000000000000ff, shl(8, to)))
-			pop(create(amount, 10, 22))
-		}
-	}
-
 	function testDistribute() public {
 		erc20.transfer(address(distr), 1000e18);
 		vm.expectEmit(true, true, true, true);
@@ -148,21 +140,6 @@ contract DistributionTest is Test {
 		emit Withdrawal(2, a2, a2);
 		distr.withdrawBatch(pids);
 		assertEq(erc20.balanceOf(a2), 250 + 25 + 40 + 400);
-	}
-
-	function testETHRescue() public {
-		vm.deal(address(this), 1e18);
-		vm.expectRevert();
-		(bool failure,) = address(distr).call{value: 1e18}("");
-		assertTrue(failure, "call was successful");
-
-		forceEtherTransfer(address(distr), 1e18);
-
-		assertEq(address(distr).balance, 1e18, "Transfer failure");
-
-		distr.withdrawEth();
-
-		assertEq(address(this).balance, 1e18, "Wring Ether value");
 	}
 
 	function testAdminRecover() public {
