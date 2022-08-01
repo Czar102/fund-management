@@ -54,7 +54,7 @@ contract DistributionTest is Test {
 			emit Withdrawal(1, address(this), address(this));
 			distr.withdraw(1);
 
-			vm.expectRevert("Already withdrew");
+			vm.expectRevert(abi.encodeWithSignature("AlreadyWithdrew()"));
 			distr.withdraw(1);
 
 			uint valueAfter = erc20.balanceOf(address(this));
@@ -72,7 +72,7 @@ contract DistributionTest is Test {
 			emit Withdrawal(2, address(this), address(this));
 			distr.withdraw(2);
 
-			vm.expectRevert("Already withdrew");
+			vm.expectRevert(abi.encodeWithSignature("AlreadyWithdrew()"));
 			distr.withdraw(2);
 
 			uint valueAfter = erc20.balanceOf(address(this));
@@ -92,7 +92,7 @@ contract DistributionTest is Test {
 			vm.expectEmit(true, true, true, true);
 			emit Withdrawal(2, address(0xdead), address(0xdead));
 			distr.withdraw(2);
-			vm.expectRevert("Already withdrew");
+			vm.expectRevert(abi.encodeWithSignature("AlreadyWithdrew()"));
 			distr.withdraw(2);
 			vm.stopPrank();
 
@@ -156,7 +156,7 @@ contract DistributionTest is Test {
 		distr.withdraw(1);
 
 		skip(RECOVER_TIME - 1);
-		vm.expectRevert("Not ready");
+		vm.expectRevert(abi.encodeWithSignature("NotReady()"));
 		distr.adminRecover(1, 2);
 
 		uint balanceBefore = erc20.balanceOf(address(this));

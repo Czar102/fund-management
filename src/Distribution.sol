@@ -16,7 +16,7 @@ struct Pool {
 /**
  * @title Distribution
  * @author Czar102
- * @notice this contract is used to divide funds equallt to all token holders proportionally to their equity
+ * @notice this contract is used to divide funds equally to all token holders proportionally to their equity
  * @dev Only ERC20 tokens can be distributed
  */
 contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
@@ -57,6 +57,12 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	 * @param pid the pool id from which the tokens were withdrawn
 	 */
 	event AdminRecover(uint indexed pid);
+
+	error NoNewBalance();
+	error AlreadyWithdrew();
+	error AdminWithdrew();
+	error NothingToWithdraw();
+	error NotReady();
 
 	/**
 	 * @notice the constructor of the contract
@@ -163,7 +169,8 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		uint balance = IERC20(token).balanceOf(address(this));
 		uint poolBalance = balance - acknowledgedBalanceOfToken[token];
 
-		require(poolBalance != 0, "No new balance");
+		if (poolBalance == 0)
+			revert NoNewBalance();
 
 		acknowledgedBalanceOfToken[token] = balance;
 
@@ -180,18 +187,21 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	}
 
 	function _withdrawTo(address to, uint pid) internal {
-		require(!withdrawn[msg.sender][pid], "Already withdrew");
+		if (withdrawn[msg.sender][pid])
+			revert AlreadyWithdrew();
 		withdrawn[msg.sender][pid] = true;
 
 		Pool storage pool = pools[pid];
 
 		uint left = pool.left;
-		require(left != 0, "Admin withdrew");
+		if (left == 0)
+			revert AdminWithdrew();
 
 		uint amount = pool.total *
 			balanceOfAt(msg.sender, pid) /
 			totalSupplyAt(pid);
-		require(amount != 0, "Nothing to withdraw");
+		if (amount == 0)
+			revert NothingToWithdraw();
 
 		address token = pool.token;
 		acknowledgedBalanceOfToken[token] -= amount;
@@ -212,11 +222,8 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 		// with a larger pid can't have a lower timestamp
 		// and timestamps are monotinocally increasing
 		uint timestamp = uint(pools[highPid - 1].timestamp);
-		require(
-			timestamp + adminRecoveryTime <= block.timestamp &&
-				timestamp != 0,
-			"Not ready"
-		);
+		if (timestamp + adminRecoveryTime > block.timestamp || timestamp == 0)
+			revert NotReady();
 
 		while (lowPid < highPid) {
 			Pool storage pool = pools[lowPid];
