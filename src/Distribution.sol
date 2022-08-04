@@ -58,10 +58,15 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 	 */
 	event AdminRecover(uint indexed pid);
 
+	/// @notice fires on attempt to create a new pool when there is no new balance
 	error NoNewBalance();
+	/// @notice fires if an account already withdrew tokens from the pool
 	error AlreadyWithdrew();
+	/// @notice fires when an admin has withdrawn tokens from the pool
 	error AdminWithdrew();
+	/// @notice fires when there are no tokens to withdraw from a pool
 	error NothingToWithdraw();
+	/// @notice fires on admin's attempt of withdrawing tokens while there is still time for withdrawals
 	error NotReady();
 
 	/**
@@ -193,15 +198,15 @@ contract Distribution is ERC20Snapshot, Ownable, ReentrancyGuard {
 
 		Pool storage pool = pools[pid];
 
-		uint left = pool.left;
-		if (left == 0)
-			revert AdminWithdrew();
-
 		uint amount = pool.total *
 			balanceOfAt(msg.sender, pid) /
 			totalSupplyAt(pid);
 		if (amount == 0)
 			revert NothingToWithdraw();
+
+		uint left = pool.left;
+		if (left == 0)
+			revert AdminWithdrew();
 
 		address token = pool.token;
 		acknowledgedBalanceOfToken[token] -= amount;

@@ -2,3 +2,6 @@ cache/
 out/
 .gas-snapshot
 .vscode/
+.env
+*demo
+broadcast/
