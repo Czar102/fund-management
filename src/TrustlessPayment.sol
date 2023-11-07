@@ -15,8 +15,8 @@ contract TrustlessPayment {
 	address public immutable payer;
 	address public immutable receiver;
 
-	IERC20 public token;
-	uint public amount;
+	IERC20 public immutable token;
+	uint public immutable amount;
 
 	bool public executed;
 
